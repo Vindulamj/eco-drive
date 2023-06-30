@@ -27,7 +27,7 @@ from exp import *
 from env import *
 import math
 
-# Vehicle colors
+# vehicle colors
 WHITE = (255, 255, 255)
 CYAN = (0, 255, 255)
 RED = (255, 0, 0)
@@ -64,27 +64,18 @@ class NoStopRLEnv(Env):
         if not warmup:
             for i in range(len(rl_vehs)):
                 car_id_num = int(rl_vehs[i].rsplit(".", 1)[-1])
-                """
-                if (car_id_num % c.rl_fraction) < 0.002:  # for mixed traffic
-                    act = action[i][0]
-                    ts.accel(rl_vehs[i], act)
-                    ts.set_color(rl_vehs[i], RED)
-                else:
+                # for mixed traffic, use IDM controller for some vehicles
+                if (car_id_num % c.rl_fraction) > 0.0001: 
+                    # use IDM controller for acceleration
                     veh_edge[rl_vehs[i]] = ts.get_edge(rl_vehs[i])
-                    ts.set_IDM_accel(rl_vehs[i], noise=True, variety=True)
-                    ts.set_color(rl_vehs[i], CYAN)
-
-                """
-                if (car_id_num % c.rl_fraction) < 0.002:  # for mixed traffic
-                    veh_edge[rl_vehs[i]] = ts.get_edge(rl_vehs[i])
-                    ts.set_IDM_accel(rl_vehs[i], noise=True, variety=True)
+                    ts.set_IDM_accel(rl_vehs[i], noise=False, variety=False)
                     ts.set_color(rl_vehs[i], CYAN)
                 else:
+                    # use learning-based controller for acceleration
                     act = action[i][0]
                     ts.accel(rl_vehs[i], act)
                     ts.set_color(rl_vehs[i], RED)
                 
-
         super().step()
         # call this after step() function to get updated vehicle list
         vehicle_list = ts.get_vehicle_list()
@@ -96,7 +87,7 @@ class NoStopRLEnv(Env):
 
     def get_state(self, vehicle_list, c, ts):
         """
-        State contains the following features.
+        state contains the following features.
             - ego-vehicle distance to intersection
             - ego vehicle speed
             - leader relative distance
@@ -117,11 +108,11 @@ class NoStopRLEnv(Env):
 
             if veh.startswith('rl'):
                 car_id_num = int(veh.rsplit(".", 1)[-1])
-                if not c.enable_mixed_traffic:
-                    if car_id_num % c.rl_fraction != 0:  # for mixed traffic
+                # observations are only collected for rl vehicles
+                if car_id_num % c.rl_fraction != 0:  
                         continue
 
-                # controlled vehicles in RED
+                # controlled rl vehicles are rendered in RED
                 ts.set_color(veh, color=RED)
 
                 tmp_obs = []
@@ -129,7 +120,7 @@ class NoStopRLEnv(Env):
                 self_speed = ts.get_speed(veh)
                 self_distance, self_lane = ts.get_dist_intersection(veh, 250)
                 road_id = self_lane.split("_")[0]
-                tmp_obs.append(self_distance/250) # rl position
+                tmp_obs.append(self_distance/250) 
                 tmp_obs.append(self_speed/c.target_vel)
 
                 # leader speed and relative distance 
@@ -138,15 +129,18 @@ class NoStopRLEnv(Env):
                 if leader_info == None:
                     if road_id not in incoming_roads:
                         leader_speed = c.target_vel # padding with maximum velocity
+                        # TODO: change the max to be extracted from the network
                         leader_dist = 250 # padding with max
                     else:
                         # at this point we know that 'veh' is a leading vehicle in an incoming approach
                         leader_speed = c.target_vel # padding with maximum velocity
+                        # TODO: change the max to be extracted from the network
                         leader_dist = 250 # padding with max
                 else:
                     leader_id, leader_dist = leader_info
                     leader_speed = ts.get_speed(leader_id)
                 tmp_obs.append(leader_speed/c.target_vel)
+                # TODO: change the max to be extracted from the network
                 tmp_obs.append(leader_dist/250)
                 
                 # follower speed and relative distance
@@ -155,11 +149,13 @@ class NoStopRLEnv(Env):
                 if follower_info == None:
                     # fill with padding values
                     follower_speed = c.target_vel # padding with max
+                    # TODO: change the max to be extracted from the network
                     follower_dist = 250 # padding with max
                 else:
                     follower_id, follower_dist = follower_info
                     follower_speed = ts.get_speed(follower_id)
                 tmp_obs.append(follower_speed/ c.target_vel)
+                # TODO: change the max to be extracted from the network
                 tmp_obs.append(follower_dist/250)
 
                 if road_id not in incoming_roads:
@@ -201,7 +197,7 @@ class NoStopRLEnv(Env):
                     tmp_obs.append(0) 
                     tmp_obs.append(1) 
                 elif road_id.startswith( ':TL' ):
-                    # middle of intersection 
+                    # middle of the intersection 
                     # phase_id_index = 3
                     tmp_obs.append(1) 
                     tmp_obs.append(0) 
@@ -218,7 +214,9 @@ class NoStopRLEnv(Env):
         return obs, ids
 
     def fuel_model(self, v_speed, v_accel):
-        """VT-CPFM Fuel Model"""
+        """
+        VT-CPFM Fuel Model
+        """
         R_f = 1.23*0.6*0.98*3.28*(v_speed**2) + 9.8066*3152*(1.75/1000)*0.033*v_speed + 9.8066*3152*(1.75/1000)*0.033 + 9.8066*3152*0
         power = ((R_f + 1.04*3152*v_accel)/(3600*0.92)) * v_speed
         fuel = 0
@@ -230,8 +228,9 @@ class NoStopRLEnv(Env):
 
 
     def get_reward(self, vehicle_list, c, ts, old_vehicle_list, veh_edge):
-        """Compute the reward of the previous action."""
-
+        """
+        compute the reward of the previous action.
+        """
         max_speed = c.target_vel
         
         horizontal_speeds = []
@@ -249,7 +248,6 @@ class NoStopRLEnv(Env):
             else:
                 vertical_speeds.append(v_speed)
 
-            # virginia fuel model
             fuel = self.fuel_model(v_speed, v_accel)
 
             if v_edge.startswith("E2TL") or v_edge.startswith("TL2W"):

@@ -30,15 +30,15 @@ if __name__ == '__main__':
  
     c = NoStopNetwork.from_args(globals(), locals())
     # set the number of workers here
-    n_workers = 1
+    n_workers = 2
     c.setdefaults( 
  
         sim_step=0.5, 
         adv_norm=False,
         batch_concat=True,
-        render=True,
+        render=False,
         step_save=5,
-        use_ray=False,
+        use_ray=True,
         num_workers=n_workers,
         per_step_rollouts=n_workers*1, 
 
@@ -56,17 +56,17 @@ if __name__ == '__main__':
         center_reward=False,
 
         _n_obs=11,
-        n_steps=5,
+        n_steps=3000,
         horizon=600,
         warmup_steps=50,
         act_type='accel',
 
         sumo_dir="sumo",
-        e=2750,
-        test_run=True,
+        e=0,
+        test_run=False,
         wandb=False,
         wandb_dry_run=True,
-        wandb_proj="no-stop-intersections",
+        wandb_proj="eco-drive",
 
         target_vel=15.0, 
         avg_reward=0,
@@ -79,8 +79,12 @@ if __name__ == '__main__':
         veh_emission_data_avg=[],
         veh_speed_data_avg=[],
 
-        rl_fraction=1, # every 'rl_fraction' vehicle is an RL vehicle   4: 75%, 2: 50%, 4/3: 25%
-        enable_mixed_traffic=True
+        # every 'rl_fraction' vehicle is an RL vehicle. This means,
+        # rl_fraction=1 => 100% RL 
+        # rl_fraction=2 => 50% RL
+        # rl_fraction=5 => 20% RL
+        # rl_fraction=10 => 10% RL
+        rl_fraction=1, 
     )
     if c.test_run:
         c.use_ray = False

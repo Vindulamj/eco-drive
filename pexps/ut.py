@@ -122,7 +122,7 @@ class NamedArrays(dict):
             if isinstance(v, NamedArrays):
                 v.to_torch(dtype, device)
             else:
-                if v.dtype == np.object:
+                if v.dtype == object:
                     self[k] = [torch.tensor(np.ascontiguousarray(x), device=device) for x in v]
                 else:
                     self[k] = torch.tensor(np.ascontiguousarray(v), device=device)
@@ -145,9 +145,16 @@ class NamedArrays(dict):
         else:
             for idxs in np.array_split(np.random.permutation(len(self)), n_minibatches):
                 mini_batch = {}
+                # TODO use recursive formulation
                 for k, v in self.items():
-                    v = np.array(v)
-                    mini_batch[k] = (v[idxs.tolist()]).tolist()
+                    if isinstance(v, list):
+                        # TODO fix that, probably not good to have to precise dtype=object
+                        mini_batch[k] = (np.array(v, dtype=object)[idxs.tolist()]).tolist()
+                    elif isinstance(v, NamedArrays):
+                        mini_batch[k] = NamedArrays({
+                            k1: (np.array(v1, dtype=object)[idxs.tolist()]).tolist()
+                            for k1, v1 in v.items()
+                        })
                 na = NamedArrays(mini_batch)
                 yield idxs, na.to_array(inplace=False, concat=concat).to_torch(device=device)
 
