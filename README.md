@@ -29,8 +29,6 @@ If you are using this codebase for any purpose please cite the following paper.
   booktitle={2022 European Control Conference (ECC)}, 
   title={Learning Eco-Driving Strategies at Signalized Intersections}, 
   year={2022},
-  volume={},
-  number={},
   pages={383-390},
   doi={10.23919/ECC55457.2022.9838000}}
 ```
