@@ -1,0 +1,25 @@
+<routes>
+            <vType id="standard_car" vClass= "passenger" guiShape="passenger" color="1,1,0" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_truck" vClass= "truck" guiShape="truck" color="0,1,0" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_bus" vClass= "bus" guiShape="bus" color="0,0,1" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_bicycle" vClass= "bicycle" guiShape="bicycle" color="1,0,1" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_motorcycle" vClass= "motorcycle" guiShape="motorcycle" color="0.5,0.5,0" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+
+            <route id="W_E_1" edges="W2TL2 W2TL1 TL12E"/>
+            <route id="W_E_2" edges="W2TL4 W2TL3 TL32E"/>
+            <route id="N_S_1" edges="N2TL3 N2TL1 TL12S"/>
+            <route id="N_S_2" edges="N2TL4 N2TL2 TL22S"/>
+            <route id="E_W_1" edges="E2TL1 E2TL2 TL22W"/>
+            <route id="E_W_2" edges="E2TL3 E2TL4 TL42W"/>
+            <route id="S_N_1" edges="S2TL1 S2TL3 TL32N"/>
+            <route id="S_N_2" edges="S2TL2 S2TL4 TL42N"/>
+
+            <flow id="rl_S_N_1_" vehsPerHour="800" route="S_N_1" departSpeed="10"/>
+            <flow id="rl_S_N_2_" vehsPerHour="800" route="S_N_2" departSpeed="10"/>
+            <flow id="rl_E_W_1_" vehsPerHour="800" route="E_W_1" departSpeed="10"/>
+            <flow id="rl_E_W_2_" vehsPerHour="800" route="E_W_2" departSpeed="10"/>
+            <flow id="rl_W_E_1_" vehsPerHour="800" route="W_E_1" departSpeed="10"/>
+            <flow id="rl_W_E_2_" vehsPerHour="800" route="W_E_2" departSpeed="10"/>
+            <flow id="rl_N_S_1_" vehsPerHour="800" route="N_S_1" departSpeed="10"/>
+             <flow id="rl_N_S_2_" vehsPerHour="800" route="N_S_2" departSpeed="10"/>
+</routes>

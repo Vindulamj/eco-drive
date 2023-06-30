@@ -1,0 +1,15 @@
+gym
+lxml
+ray
+traci
+pyyaml
+q
+numpy==1.19
+scipy
+pandas
+matplotlib
+scikit-learn
+jupyter
+tensorboard
+wandb
+tqdm

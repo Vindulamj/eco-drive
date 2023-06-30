@@ -1,0 +1,19 @@
+<routes>
+            <vType id="standard_car" vClass= "passenger" guiShape="passenger" color="1,1,0" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12">
+                <carFollowing-IDM/>
+            </vType>
+            <vType id="standard_truck" vClass= "truck" guiShape="truck" color="0,1,0" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_bus" vClass= "bus" guiShape="bus" color="0,0,1" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_bicycle" vClass= "bicycle" guiShape="bicycle" color="1,0,1" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+            <vType id="standard_motorcycle" vClass= "motorcycle" guiShape="motorcycle" color="0.5,0.5,0" lcSpeedGain="0" lcKeepRight="0" lcCooperative="0" maxSpeed="12"/>
+
+            <route id="W_E" edges="W2TL TL2E"/>
+            <route id="N_S" edges="N2TL TL2S"/>
+            <route id="E_W" edges="E2TL TL2W"/>
+            <route id="S_N" edges="S2TL TL2N"/>
+
+            <flow id="rl_S_N_" vehsPerHour="800" route="S_N" departSpeed="10"/>
+            <flow id="rl_E_W_" vehsPerHour="800" route="E_W" departSpeed="10"/>
+            <flow id="rl_W_E_" vehsPerHour="800" route="W_E" departSpeed="10"/>
+            <flow id="rl_N_S_" vehsPerHour="800" route="N_S" departSpeed="10"/>
+</routes>
