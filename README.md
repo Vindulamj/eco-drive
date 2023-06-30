@@ -1,5 +1,9 @@
 # No-stop Intersections
 
+This repo contains the codebase for the paper titled "Learning Eco-Driving Strategies at Signalized Intersections" published in European Control Conference (ECC) 2022.
+
+[Paper](https://arxiv.org/pdf/2204.12561.pdf) | [Website](https://vindulamj.github.io/eco-driving-rl/)
+
 ## Installation
 1. The code has been tested on Ubuntu 20.04, or MacOS 13.0 Ventura.
 2. Follow instructions [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/) to install Miniconda, likely `wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh` followed by `bash Miniconda3-latest-Linux-x86_64.sh`.
