@@ -18,3 +18,14 @@ This repo contains the codebase for the paper titled "Learning Eco-Driving Strat
 
 ### Eco-driving in 1x1 intersection
 `python pexps/main.py --agent <agent_type> --res <res_dir>`  
+
+## Citation 
+
+If you are using this codebase for any purpose please cite the following paper. 
+
+**Title:** Learning Eco-Driving Strategies at Signalized Intersections
+**Authors:** Vindula Jayawardana, Cathy Wu
+**Conference:** 2022 European Control Conference (ECC)
+**Year:** 2022
+**Pages:** 383-390
+**DOI:** [10.23919/ECC55457.2022.9838000](https://doi.org/10.23919/ECC55457.2022.9838000)
