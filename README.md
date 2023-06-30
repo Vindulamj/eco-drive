@@ -1,4 +1,4 @@
-# No-stop Intersections
+# Learning Eco-Driving Strategies at Signalized Intersections
 
 This repo contains the codebase for the paper titled "Learning Eco-Driving Strategies at Signalized Intersections" published in European Control Conference (ECC) 2022.
 
@@ -11,7 +11,7 @@ This repo contains the codebase for the paper titled "Learning Eco-Driving Strat
 4. Install PyTorch from [pytorch.org](pytorch.org).
 5. Install dependencies `pip install -r requirements.txt`.
 
-## Run Instructions
+## Instructions
 `<agent_type>` is the type of the agents that can be used to control CAVs. Available options: RL, IDM, ECO_CACC
 
 `<res_dir>` is the result directory, which is where the model checkpoints, training logs, and training csv results will be saved. Add `render` as an argument for using `sumo-gui` instead of `sumo`. E.g. `python pexps/<script>.py <res_dir> render`.
