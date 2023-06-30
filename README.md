@@ -23,9 +23,15 @@ This repo contains the codebase for the paper titled "Learning Eco-Driving Strat
 
 If you are using this codebase for any purpose please cite the following paper. 
 
-**Title:** Learning Eco-Driving Strategies at Signalized Intersections
-**Authors:** Vindula Jayawardana, Cathy Wu
-**Conference:** 2022 European Control Conference (ECC)
-**Year:** 2022
-**Pages:** 383-390
-**DOI:** [10.23919/ECC55457.2022.9838000](https://doi.org/10.23919/ECC55457.2022.9838000)
+``
+@INPROCEEDINGS{9838000,
+  author={Jayawardana, Vindula and Wu, Cathy},
+  booktitle={2022 European Control Conference (ECC)}, 
+  title={Learning Eco-Driving Strategies at Signalized Intersections}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={383-390},
+  doi={10.23919/ECC55457.2022.9838000}}
+
+``
