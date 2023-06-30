@@ -23,7 +23,7 @@ This repo contains the codebase for the paper titled "Learning Eco-Driving Strat
 
 If you are using this codebase for any purpose please cite the following paper. 
 
-``
+```
 @INPROCEEDINGS{9838000,
   author={Jayawardana, Vindula and Wu, Cathy},
   booktitle={2022 European Control Conference (ECC)}, 
@@ -33,5 +33,4 @@ If you are using this codebase for any purpose please cite the following paper.
   number={},
   pages={383-390},
   doi={10.23919/ECC55457.2022.9838000}}
-
-``
+```
