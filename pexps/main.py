@@ -24,15 +24,17 @@
 from imported_utils import *
 from imported_utils.exp_utils import *
 from env import *
+from stats import SimulationStats
 from scenarios.init_envs import NoStopNetwork
 
 if __name__ == '__main__':
  
     c = NoStopNetwork.from_args(globals(), locals())
+    stats = SimulationStats()
     # set the number of workers here
-    n_workers = 2
+    n_workers = 12
+
     c.setdefaults( 
- 
         sim_step=0.5, 
         adv_norm=False,
         batch_concat=True,
@@ -40,7 +42,7 @@ if __name__ == '__main__':
         step_save=5,
         use_ray=True,
         num_workers=n_workers,
-        per_step_rollouts=n_workers*1, 
+        per_step_rollouts=n_workers, 
 
         max_accel=5.0,
         max_decel=-5.0,
@@ -54,6 +56,7 @@ if __name__ == '__main__':
         opt='Adam',
         norm_reward=False,
         center_reward=False,
+        use_critich=True,
 
         _n_obs=11,
         n_steps=3000,
@@ -62,36 +65,45 @@ if __name__ == '__main__':
         act_type='accel',
 
         sumo_dir="sumo",
+        # the model ID number used for testing
         e=0,
         test_run=False,
         wandb=False,
         wandb_dry_run=True,
         wandb_proj="eco-drive",
+        wandb_key="9dbd690c152c02907b37359c88b9dbf4c9c6be0b",
 
         target_vel=15.0, 
-        avg_reward=0,
-        running_steps=0,
-        velocity_fleet=0,
-        rl_speed=0,
-        fuel_fleet=0,
-        veh_data={},
-        veh_fuel_data_avg=[],
-        veh_emission_data_avg=[],
-        veh_speed_data_avg=[],
+        stats=stats,
 
         # every 'rl_fraction' vehicle is an RL vehicle. This means,
-        # rl_fraction=1 => 100% RL 
-        # rl_fraction=2 => 50% RL
-        # rl_fraction=5 => 20% RL
-        # rl_fraction=10 => 10% RL
-        rl_fraction=1, 
+        # rl_fraction=1 => 100% RL vehicle penetration
+        # rl_fraction=2 => 50% RL vehicle penetration
+        # rl_fraction=5 => 20% RL vehicle penetration
+        # rl_fraction=10 => 10% RL vehicle penetration
+        rl_fraction=1,  
+
+        # output files
+        output_tracjectory_file=False,
     )
+
+    # making sure the configurations are valid
     if c.test_run:
         c.use_ray = False
-        print("Override \"use_ray\" variable if in test mode")
+        c.num_workers = 1
+        c.per_step_rollouts = 1
+        c.render = False
+        c.n_steps = 5
+        c.wandb = False
+        assert c.e > 0, "test run requires an existing model ID"
+    else:
+        c.use_ray = True
+        c.num_workers = n_workers
+        c.per_step_rollouts = n_workers
+        c.render = False
+        c.n_steps = 3000
+        c.wandb = True
+        c.wandb_dry_run = False
+        c.wandb_proj = "eco-drive"
 
-    if c.alg == "PPO" or c.alg == "TRPO":
-        c.use_critic = True
-
-    # run experiment
     c.run()

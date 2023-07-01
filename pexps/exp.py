@@ -167,25 +167,12 @@ class Main(Config):
             if c.wandb:
                 # log the training progress in wandb
                 wandb.log({
-                "raw reward mean": c._results.loc[(c._results.shape[0]-2), 'raw_reward_mean'],
-                "raw reward sum": c._results.loc[(c._results.shape[0]-2), 'raw_reward_sum'],
-                "reward mean": c._results.loc[(c._results.shape[0]-2), 'reward_mean'],
-                "reward sum": c._results.loc[(c._results.shape[0]-2), 'reward_sum'],
-                "policy loss": c._results.loc[(c._results.shape[0]-2), 'policy_loss'],
-                "kl": c._results.loc[(c._results.shape[0]-2), 'kl'],
-                "entropy": c._results.loc[(c._results.shape[0]-2), 'entropy'],
-                "lr": c._results.loc[(c._results.shape[0]-2), 'lr'],
-                "total time": c._results.loc[(c._results.shape[0]-2), 'total_time']}, step=c._i)
+                "total time": 10}, step=c._i)
         except KeyError:
             print("Wandb recording error!!")
             pass
 
-        c.running_steps = 0
-        c.avg_reward = 0
-        c.velocity_fleet = 0
-        c.rl_speed = 0
-        c.fuel_fleet = 0
-        c.veh_data = {}
+        c.stats.reset()
 
         if c._i % c.step_save == 0:
             c.save_train_results(c._results)
@@ -246,8 +233,8 @@ class Main(Config):
             pred = from_torch(c._model(to_torch(rollout.obs[-1]), value=False, policy=True, argmax=False))
 
             if c.get('aclip', True) and isinstance(a_space, Box):
-                # TODO: check if this works 
                 pred.action = np.clip(pred.action, a_space.low, a_space.high)
+                
             rollout.append(**pred)
             ret = c._env.step(rollout.action[-1], rollout.id[-1], step)
 
@@ -261,26 +248,24 @@ class Main(Config):
             step += 1
 
         stats = {"steps": step}
-        
-        print("Avg overall speed: " + str(c.velocity_fleet/c.running_steps))
-        print("Avg rl speed: " + str(c.rl_speed/c.running_steps))
-        print("Sum fuel: " + str(c.fuel_fleet))
-        print("Avg reward: " + str(c.avg_reward/c.running_steps))
-        print("RL fraction: " + str(c.rl_fraction))
-
+    
         speeds = []
         fuel = []
         emission = []
+
         lane_length = c.lane_length
         intersection_length = c.intersection_length
-        for k in c.veh_data.keys():
-            data_ary = c.veh_data[k]
+
+        for k in c.stats.veh_data.keys():
+            data_ary = c.stats.veh_data[k]
             v_speeds = []
             v_fuel = []
             v_emission = []
             is_warmup_vehicle = False
             has_finished_trip = False
+
             for d in data_ary:
+                # only collect non-warmup vehicles stats
                 if d[3] == 0:
                     is_warmup_vehicle = True
                     break
@@ -294,25 +279,25 @@ class Main(Config):
                 speeds.append((lane_length*2 + intersection_length)/len(v_speeds))
                 fuel.append(np.sum(np.array(v_fuel)))
                 emission.append(np.sum(np.array(v_emission)))
+        
+        # record running stats 
+        c.stats.veh_speed_data_avg.append(np.mean(np.array(speeds)))
+        c.stats.veh_speed_data_avg.append(np.mean(np.array(speeds)))
+        c.stats.veh_fuel_data_avg.append(np.mean(np.array(fuel)))
+        c.stats.veh_emission_data_avg.append(np.mean(np.array(emission)))
 
-        c.veh_speed_data_avg.append(np.mean(np.array(speeds)))
-        c.veh_fuel_data_avg.append(np.mean(np.array(fuel)))
-        c.veh_emission_data_avg.append(np.mean(np.array(emission)))
         print("")
         print("Avg per vehicle speed: " + str(np.mean(np.array(speeds))) +" m/s")
-        print("Avg per vehicle fuel: " + str(np.mean(np.array(fuel))) + " kg")
-        print("Sum of fuel consumption: " + str(np.sum(np.array(fuel))) + " kg")
+        print("Avg per vehicle trip fuel: " + str(np.mean(np.array(fuel))) + " kg")
+        print("All vehicle fuel consumption: " + str(np.sum(np.array(fuel))) + " kg")
         print("Number of considered vehicles: " + str(len(fuel)))
         print("")
-        print("Avg per vehicle speed (avg over episodes): " + str(np.mean(np.array(c.veh_speed_data_avg))) +" m/s")
-        print("Avg per vehicle fuel (avg over episodes): " + str(np.mean(np.array(c.veh_fuel_data_avg))) + " kg")
-        print("Avg per vehicle co2 emission (avg over episodes): " + str(np.mean(np.array(c.veh_emission_data_avg))/1000000) + " kg/s")  
-        c.running_steps = 0 
-        c.avg_reward = 0
-        c.velocity_fleet = 0
-        c.rl_speed = 0
-        c.fuel_fleet = 0
-        c.veh_data = {}
+        print("Avg per vehicle speed (avg over episodes): " + str(np.mean(np.array(c.stats.veh_speed_data_avg))) +" m/s")
+        print("Avg per vehicle fuel (avg over episodes): " + str(np.mean(np.array(c.stats.veh_fuel_data_avg))) + " kg")
+        print("Avg per vehicle co2 emission (avg over episodes): " + str(np.mean(np.array(c.stats.veh_emission_data_avg))/1000000) + " kg/s")  
+
+        # reset data strcutures carrying episode data
+        c.stats.reset()
 
         return rollout, stats
 
@@ -382,12 +367,11 @@ class Main(Config):
         Main training loop
         """
         if c.wandb:
-            os.environ["WANDB_API_KEY"] = "9dbd690c152c02907b37359c88b9dbf4c9c6be0b" 
+            os.environ["WANDB_API_KEY"] = c.wandb_key
             if c.wandb_dry_run:
                 os.environ["WANDB_MODE"] = "dryrun" 
             project = c.wandb_proj 
-            run = c.wandb_run
-            wandb.init(project=project,name=run)
+            wandb.init(project=project)
 
         c.on_train_start()
         while c._i < c.n_steps:
@@ -431,19 +415,6 @@ class Main(Config):
             c.rollouts()
             c._i += 1
             c.log('')
-            
-            if c.running_steps != 0:
-                print("Avg overall speed : " + str(c.velocity_fleet/c.running_steps))
-                print("Avg rl speed : " + str(c.rl_speed/c.running_steps))
-                print("Sum fuel : " + str(c.fuel_fleet))
-                print("Avg reward : " + str(c.avg_reward/c.running_steps))
-
-            c.running_steps = 0 
-            c.avg_reward = 0
-            c.velocity_fleet = 0
-            c.rl_speed = 0
-            c.fuel_fleet = 0
-            c.veh_data = {}
 
         if hasattr(c._env, 'close'):
             c._env.close()

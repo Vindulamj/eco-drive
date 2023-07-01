@@ -5,11 +5,14 @@ This repo contains the codebase for the paper titled "Learning Eco-Driving Strat
 [Paper](https://arxiv.org/pdf/2204.12561.pdf) | [Website](https://vindulamj.github.io/eco-driving-rl/)
 
 ## Installation
-1. The code has been tested on Ubuntu 20.04, or MacOS 13.0 Ventura.
+1. The code has been tested on Ubuntu 20.04, and MacOS 13.0 Ventura.
 2. Follow instructions [here](https://docs.conda.io/projects/conda/en/latest/user-guide/install/) to install Miniconda, likely `wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh` followed by `bash Miniconda3-latest-Linux-x86_64.sh`.
 3. Follow instructions in SUMO [website](https://eclipse.dev/sumo/) to install SUMO simulator. Try running `sumo` in terminal to confirm the successful installation.
 4. Install PyTorch from [pytorch.org](pytorch.org).
+5. Make a clone of the repo.
+5. Set the enviornment variable 'F' to the code directory.
 5. Install dependencies `pip install -r requirements.txt`.
+6. If you want to use fast [libsumo](https://sumo.dlr.de/docs/Libsumo.html) instead of traci, set LIBSUMO os variable to true.
 
 ## Instructions
 `<agent_type>` is the type of the agents that can be used to control CAVs. Available options: RL, IDM

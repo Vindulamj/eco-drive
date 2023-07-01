@@ -26,7 +26,6 @@ try:
 except ImportError:
     pass
 
-from ast import Str
 from imported_utils import *
 
 def main_only(method):
@@ -83,7 +82,7 @@ class Config(Namespace):
     def from_args(cls, *globals_locals):
         import argparse
         parser = argparse.ArgumentParser(description='Model arguments')
-        parser.add_argument("--agent", help="Choose agent from : RL, IDM, ECO-CACC, BASELINE, RL-2x2", type=str)
+        parser.add_argument("--agent", help="Choose agent from : RL, IDM", type=str)
         parser.add_argument('--res', default = "temp_res", type=Path, help='Result directory')
         parser.add_argument('--kwargs', default = "tmp", nargs='*', help='Extra arguments that goes into the config')
 

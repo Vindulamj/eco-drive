@@ -23,9 +23,19 @@
 
 import subprocess
 import sumolib
-import traci
-import traci.constants as T  # https://sumo.dlr.de/pydoc/traci.constants.html
-from traci.exceptions import FatalTraCIError, TraCIException
+
+import os
+import sys
+
+if 'LIBSUMO' in os.environ:
+    print('Using LIBSUMO')
+    sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
+    import libsumo as traci
+else:
+    print('Using TRACI')
+    import traci
+    import traci.constants as T  # https://sumo.dlr.de/pydoc/traci.constants.html
+    from traci.exceptions import FatalTraCIError, TraCIException
 import warnings
 from sumo_utils.general import *
 
@@ -87,9 +97,12 @@ class SumoDef:
                 "max-depart-delay": c.get("max_depart_delay", 0.5),
                 "random": True,
                 "start": c.get("start", True),
-                "emission-output": "run-logs.xml",
             }
         )
+
+        if c.output_tracjectory_file:
+            sumo_args["emission-output"] = "run-logs.xml"
+
         config_path = self.dir + "/sumo_config.sumocfg"
         cmd = ["sumo-gui" if c.render else "sumo", "-c", config_path]
         for k, v in sumo_args.items():

@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 
-from numpy.lib.polynomial import roots
 from imported_utils import *
 from exp import *
 from env import *
@@ -349,12 +348,7 @@ class NoStopRLEnv(Env):
 
 
     def collect_stats(self, warmup, c, ts, vehicle_list, reward):
-        # collect stats
-        all_speeds = []
-        rl_speeds = [] 
-        all_accels = []
-        rl_accels = []
-        all_fuel = []
+        # collect stats of the current step
 
         for veh in vehicle_list:
             v_accel = ts.get_acceleration(veh)
@@ -363,15 +357,10 @@ class NoStopRLEnv(Env):
             v_lane_pos = ts.get_position(veh)
             v_fuel = self.fuel_model(v_speed, v_accel)
             v_emiission = ts.get_co2_emission(veh)*c.sim_step
-            if veh.startswith('rl'):
-                rl_speeds.append(v_speed)
-                rl_accels.append(v_accel)
-            all_speeds.append(v_speed)
-            all_accels.append(v_accel)
-            all_fuel.append(v_fuel)
 
             if warmup:
                 if v_lane.startswith('TL2'):
+                    # TODO remove this card coded values
                     if v_lane_pos > 240:
                         data_list = [v_speed, v_fuel, v_emiission, 0, 1]
                     else:
@@ -380,6 +369,7 @@ class NoStopRLEnv(Env):
                     data_list = [v_speed, v_fuel, v_emiission, 0, 0]
             else:
                 if v_lane.startswith('TL2'):
+                    # TODO remove this card coded values
                     if v_lane_pos > 240:
                         data_list = [v_speed, v_fuel, v_emiission, 1, 1]
                     else:
@@ -387,30 +377,8 @@ class NoStopRLEnv(Env):
                 else:
                     data_list = [v_speed, v_fuel, v_emiission, 1, 0]
 
-            if veh not in c.veh_data.keys():
-                c.veh_data[veh] = [data_list]
+            if veh not in c.stats.veh_data.keys():
+                c.stats.veh_data[veh] = [data_list]
             else:
-                c.veh_data[veh].append(data_list)
+                c.stats.veh_data[veh].append(data_list)
 
-        if not warmup:
-            c.avg_reward += reward[0][0]
-            c.running_steps += 1
-
-            if len(all_speeds) == 0:
-                avg_speed = 0
-            else:
-                avg_speed = np.mean(np.array(all_speeds))
-            
-            if len(all_fuel) == 0:
-                sum_fuel = 0
-            else:
-                sum_fuel = np.sum(np.array(all_fuel))
-
-            if len(rl_speeds) == 0:
-                avg_rl_speed = 0
-            else:
-                avg_rl_speed = np.mean(np.array(rl_speeds))
-
-            c.velocity_fleet += avg_speed
-            c.rl_speed += avg_rl_speed
-            c.fuel_fleet += sum_fuel
