@@ -258,9 +258,7 @@ class Main(Config):
 
         for k in c.stats.veh_data.keys():
             data_ary = c.stats.veh_data[k]
-            v_speeds = []
-            v_fuel = []
-            v_emission = []
+            v_speeds = v_fuel = v_emission = []
             is_warmup_vehicle = False
             has_finished_trip = False
 
@@ -276,6 +274,7 @@ class Main(Config):
                     has_finished_trip = True
 
             if not is_warmup_vehicle and has_finished_trip:
+                # TODO: this assumes the incoming and outgoing intersections are of the same length
                 speeds.append((lane_length*2 + intersection_length)/len(v_speeds))
                 fuel.append(np.sum(np.array(v_fuel)))
                 emission.append(np.sum(np.array(v_emission)))
@@ -286,15 +285,7 @@ class Main(Config):
         c.stats.veh_fuel_data_avg.append(np.mean(np.array(fuel)))
         c.stats.veh_emission_data_avg.append(np.mean(np.array(emission)))
 
-        print("")
-        print("Avg per vehicle speed: " + str(np.mean(np.array(speeds))) +" m/s")
-        print("Avg per vehicle trip fuel: " + str(np.mean(np.array(fuel))) + " kg")
-        print("All vehicle fuel consumption: " + str(np.sum(np.array(fuel))) + " kg")
-        print("Number of considered vehicles: " + str(len(fuel)))
-        print("")
-        print("Avg per vehicle speed (avg over episodes): " + str(np.mean(np.array(c.stats.veh_speed_data_avg))) +" m/s")
-        print("Avg per vehicle fuel (avg over episodes): " + str(np.mean(np.array(c.stats.veh_fuel_data_avg))) + " kg")
-        print("Avg per vehicle co2 emission (avg over episodes): " + str(np.mean(np.array(c.stats.veh_emission_data_avg))/1000000) + " kg/s")  
+        c.stats.print_stats(epi_speeds=speeds, epi_fuel=fuel)
 
         # reset data strcutures carrying episode data
         c.stats.reset()

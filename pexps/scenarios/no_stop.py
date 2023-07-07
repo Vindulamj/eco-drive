@@ -21,8 +21,11 @@
 # SOFTWARE.
 
 
+# trunk-ignore(ruff/F403)
 from imported_utils import *
+# trunk-ignore(ruff/F403)
 from exp import *
+# trunk-ignore(ruff/F403)
 from env import *
 import math
 
@@ -31,15 +34,17 @@ WHITE = (255, 255, 255)
 CYAN = (0, 255, 255)
 RED = (255, 0, 0)
 
+# trunk-ignore(ruff/F405)
 class NoStopRLEnv(Env):
     
     speeds_last_step = {}
 
     def reset(self):
         """
-        Custom Env class reset method. 
+        Reset custom Env class .
         """
-        # load the network and subscribe to state 
+
+        # load the network and subscribe to state.
         while not self.reset_sumo():
             pass
         ret = super().init_env()
@@ -49,6 +54,7 @@ class NoStopRLEnv(Env):
         c.intersection_length = ts.get_lane_length(":TL_1_0")
         return ret
 
+    # trunk-ignore(ruff/B006)
     def step(self, action=[], rl_vehs=[], t=0, warmup=False):
         """
         Build observations, rewards and also simulate the environment by one step.
@@ -80,8 +86,9 @@ class NoStopRLEnv(Env):
         vehicle_list = ts.get_vehicle_list()
         obs, ids = self.get_state(vehicle_list, c, ts)
         reward, _ = self.get_reward(vehicle_list, c, ts, rl_vehs, veh_edge)
-        self.collect_stats(warmup, c, ts, vehicle_list, reward)
+        self.collect_stats(warmup, c, ts, vehicle_list)
 
+        # trunk-ignore(ruff/F405)
         return Namespace(obs=obs, id=ids, reward=reward)
 
     def get_state(self, vehicle_list, c, ts):
@@ -95,7 +102,7 @@ class NoStopRLEnv(Env):
             - follower speed
             - traffic light phase
             - traffic light time remaining in the current phase
-            - phase the ego-vehicle belongs to 
+            - phase the ego-vehicle belongs to.
         """
         obs = {}
         # "TL" is common to all vehicles 
@@ -125,7 +132,7 @@ class NoStopRLEnv(Env):
                 # leader speed and relative distance 
                 # TODO limit the visible distance to d = 100m
                 leader_info = ts.get_leader(veh)
-                if leader_info == None:
+                if leader_info is None:
                     if road_id not in incoming_roads:
                         leader_speed = c.target_vel # padding with maximum velocity
                         # TODO: change the max to be extracted from the network
@@ -145,7 +152,7 @@ class NoStopRLEnv(Env):
                 # follower speed and relative distance
                 # TODO limit the visible distance to d = 100m
                 follower_info = ts.get_follower(veh)
-                if follower_info == None:
+                if follower_info is None:
                     # fill with padding values
                     follower_speed = c.target_vel # padding with max
                     # TODO: change the max to be extracted from the network
@@ -205,6 +212,7 @@ class NoStopRLEnv(Env):
                     # phase_id_index = 4
                     tmp_obs.append(1) 
                     tmp_obs.append(1) 
+                # trunk-ignore(ruff/F405)
                 obs[veh] = np.array(tmp_obs)
 
         sort_id = lambda d: [v for k, v in sorted(d.items())]
@@ -214,7 +222,7 @@ class NoStopRLEnv(Env):
 
     def fuel_model(self, v_speed, v_accel):
         """
-        VT-CPFM Fuel Model
+        VT-CPFM Fuel Model.
         """
         R_f = 1.23*0.6*0.98*3.28*(v_speed**2) + 9.8066*3152*(1.75/1000)*0.033*v_speed + 9.8066*3152*(1.75/1000)*0.033 + 9.8066*3152*0
         power = ((R_f + 1.04*3152*v_accel)/(3600*0.92)) * v_speed
@@ -347,7 +355,7 @@ class NoStopRLEnv(Env):
         return rewards, ids
 
 
-    def collect_stats(self, warmup, c, ts, vehicle_list, reward):
+    def collect_stats(self, warmup, c, ts, vehicle_list):
         # collect stats of the current step
 
         for veh in vehicle_list:
@@ -361,19 +369,13 @@ class NoStopRLEnv(Env):
             if warmup:
                 if v_lane.startswith('TL2'):
                     # TODO remove this card coded values
-                    if v_lane_pos > 240:
-                        data_list = [v_speed, v_fuel, v_emiission, 0, 1]
-                    else:
-                        data_list = [v_speed, v_fuel, v_emiission, 0, 0]
+                    data_list = [v_speed, v_fuel, v_emiission, 0, 1] if v_lane_pos > 240 else [v_speed, v_fuel, v_emiission, 0, 0]
                 else:
                     data_list = [v_speed, v_fuel, v_emiission, 0, 0]
             else:
                 if v_lane.startswith('TL2'):
                     # TODO remove this card coded values
-                    if v_lane_pos > 240:
-                        data_list = [v_speed, v_fuel, v_emiission, 1, 1]
-                    else:
-                        data_list = [v_speed, v_fuel, v_emiission, 1, 0]
+                    data_list = [v_speed, v_fuel, v_emiission, 1, 1] if v_lane_pos > 240 else [v_speed, v_fuel, v_emiission, 1, 0]
                 else:
                     data_list = [v_speed, v_fuel, v_emiission, 1, 0]
 

@@ -33,6 +33,7 @@ if __name__ == '__main__':
     stats = SimulationStats()
     # set the number of workers here
     n_workers = 12
+    is_test_run = True
 
     c.setdefaults( 
         sim_step=0.5, 
@@ -67,7 +68,7 @@ if __name__ == '__main__':
         sumo_dir="sumo",
         # the model ID number used for testing
         e=0,
-        test_run=False,
+        test_run=is_test_run,
         wandb=False,
         wandb_dry_run=True,
         wandb_proj="eco-drive",
@@ -92,10 +93,12 @@ if __name__ == '__main__':
         c.use_ray = False
         c.num_workers = 1
         c.per_step_rollouts = 1
-        c.render = False
+        c.render = True
         c.n_steps = 5
         c.wandb = False
-        assert c.e > 0, "test run requires an existing model ID"
+        if c.e <= 0:
+            c.e = 3000
+            print("test run requires an existing model ID. Setting it to default 3000")
     else:
         c.use_ray = True
         c.num_workers = n_workers
