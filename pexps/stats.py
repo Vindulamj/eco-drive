@@ -25,25 +25,49 @@ from imported_utils import *
 from exp import *
 from env import *
 
-class SimulationStats():
 
+class SimulationStats:
     def __init__(self):
-        self.veh_data={}
-        self.veh_fuel_data_avg=[]
-        self.veh_emission_data_avg=[]
-        self.veh_speed_data_avg=[]
+        self.veh_data = {}
+        self.veh_fuel_data_avg = []
+        self.veh_emission_data_avg = []
+        self.veh_speed_data_avg = []
 
     def reset(self):
         self.veh_data = {}
 
     def print_stats(self, epi_speeds, epi_fuel):
         print("----------------------------------------")
-        print("Avg per vehicle speed (this episode): " + str(np.mean(np.array(epi_speeds))) +" m/s")
-        print("Avg per vehicle trip fuel (this episode): " + str(np.mean(np.array(epi_fuel))) + " kg")
-        print("All vehicle fuel consumption (this episode): " + str(np.sum(np.array(epi_fuel))) + " kg")
+        print(
+            "Avg per vehicle speed (this episode): "
+            + str(np.mean(np.array(epi_speeds)))
+            + " m/s"
+        )
+        print(
+            "Avg per vehicle trip fuel (this episode): "
+            + str(np.mean(np.array(epi_fuel)))
+            + " kg"
+        )
+        print(
+            "All vehicle fuel consumption (this episode): "
+            + str(np.sum(np.array(epi_fuel)))
+            + " kg"
+        )
         print("Number of considered vehicles (this episode): " + str(len(epi_fuel)))
         print("")
-        print("Avg per vehicle speed (avg over episodes): " + str(np.mean(np.array(self.veh_speed_data_avg))) +" m/s")
-        print("Avg per vehicle fuel (avg over episodes): " + str(np.mean(np.array(self.veh_fuel_data_avg))) + " kg")
-        print("Avg per vehicle co2 emission (avg over episodes): " + str(np.mean(np.array(self.veh_emission_data_avg))/1000000) + " kg/s") 
+        print(
+            "Avg per vehicle speed (avg over episodes): "
+            + str(np.mean(np.array(self.veh_speed_data_avg)))
+            + " m/s"
+        )
+        print(
+            "Avg per vehicle fuel (avg over episodes): "
+            + str(np.mean(np.array(self.veh_fuel_data_avg)))
+            + " kg"
+        )
+        print(
+            "Avg per vehicle co2 emission (avg over episodes): "
+            + str(np.mean(np.array(self.veh_emission_data_avg)) / 1000000)
+            + " kg/s"
+        )
         print("----------------------------------------")

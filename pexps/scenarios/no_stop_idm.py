@@ -31,15 +31,15 @@ WHITE = (255, 255, 255)
 CYAN = (0, 255, 255)
 RED = (255, 0, 0)
 
+
 class NoStopIDMEnv(Env):
-    
     speeds_last_step = {}
 
     def reset(self):
         """
-        Custom Env class reset method. 
+        Custom Env class reset method.
         """
-        # load the network and subscribe to state 
+        # load the network and subscribe to state
         while not self.reset_sumo():
             pass
         ret = super().init_env()
@@ -72,12 +72,11 @@ class NoStopIDMEnv(Env):
         return Namespace(obs=obs, id=ids, reward=reward)
 
     def get_state(self, vehicle_list, c, ts):
-        """ Placeholder state information"""
+        """Placeholder state information"""
         obs = {}
 
-        for veh in vehicle_list:  
-
-            if veh.startswith('rl'):
+        for veh in vehicle_list:
+            if veh.startswith("rl"):
                 obs[veh] = np.zeros(c._n_obs)
 
         sort_id = lambda d: [v for k, v in sorted(d.items())]
@@ -87,21 +86,25 @@ class NoStopIDMEnv(Env):
 
     def fuel_model(self, v_speed, v_accel):
         """VT-CPFM Fuel Model"""
-        R_f = 1.23*0.6*0.98*3.28*(v_speed**2) + 9.8066*3152*(1.75/1000)*0.033*v_speed + 9.8066*3152*(1.75/1000)*0.033 + 9.8066*3152*0
-        power = ((R_f + 1.04*3152*v_accel)/(3600*0.92)) * v_speed
+        R_f = (
+            1.23 * 0.6 * 0.98 * 3.28 * (v_speed**2)
+            + 9.8066 * 3152 * (1.75 / 1000) * 0.033 * v_speed
+            + 9.8066 * 3152 * (1.75 / 1000) * 0.033
+            + 9.8066 * 3152 * 0
+        )
+        power = ((R_f + 1.04 * 3152 * v_accel) / (3600 * 0.92)) * v_speed
         fuel = 0
         if power >= 0:
-            fuel = 0.00078 + 0.000019556*power + 0.000001*(power**2)
+            fuel = 0.00078 + 0.000019556 * power + 0.000001 * (power**2)
         else:
             fuel = 0.00078
         return fuel
-
 
     def get_reward(self, vehicle_list, c, ts, old_vehicle_list, veh_edge):
         """Compute the reward of the previous action."""
 
         rewards = {}
-        
+
         for rl_id in old_vehicle_list:
             rewards[rl_id] = 0
 
@@ -110,11 +113,10 @@ class NoStopIDMEnv(Env):
         rewards = arrayf(sort_id(rewards)).reshape(-1, 1)
         return rewards, ids
 
-
     def collect_stats(self, warmup, c, ts, vehicle_list, reward):
         # collect stats
         all_speeds = []
-        rl_speeds = [] 
+        rl_speeds = []
         all_accels = []
         rl_accels = []
         all_fuel = []
@@ -125,8 +127,8 @@ class NoStopIDMEnv(Env):
             v_lane = ts.get_lane_id(veh)
             v_lane_pos = ts.get_position(veh)
             v_fuel = self.fuel_model(v_speed, v_accel)
-            v_emiission = ts.get_co2_emission(veh)*c.sim_step
-            if veh.startswith('rl'):
+            v_emiission = ts.get_co2_emission(veh) * c.sim_step
+            if veh.startswith("rl"):
                 rl_speeds.append(v_speed)
                 rl_accels.append(v_accel)
             all_speeds.append(v_speed)
@@ -134,7 +136,7 @@ class NoStopIDMEnv(Env):
             all_fuel.append(v_fuel)
 
             if warmup:
-                if v_lane.startswith('TL2'):
+                if v_lane.startswith("TL2"):
                     if v_lane_pos > 240:
                         data_list = [v_speed, v_fuel, v_emiission, 0, 1]
                     else:
@@ -142,7 +144,7 @@ class NoStopIDMEnv(Env):
                 else:
                     data_list = [v_speed, v_fuel, v_emiission, 0, 0]
             else:
-                if v_lane.startswith('TL2'):
+                if v_lane.startswith("TL2"):
                     if v_lane_pos > 240:
                         data_list = [v_speed, v_fuel, v_emiission, 1, 1]
                     else:
@@ -163,7 +165,7 @@ class NoStopIDMEnv(Env):
                 avg_speed = 0
             else:
                 avg_speed = np.mean(np.array(all_speeds))
-            
+
             if len(all_fuel) == 0:
                 sum_fuel = 0
             else:
@@ -177,5 +179,3 @@ class NoStopIDMEnv(Env):
             c.velocity_fleet += avg_speed
             c.rl_speed += avg_rl_speed
             c.fuel_fleet += sum_fuel
-
-        

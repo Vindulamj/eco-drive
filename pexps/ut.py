@@ -26,11 +26,16 @@ from gym.spaces import Box, Discrete
 
 from imported_utils import *
 
+
 def discount(x, gamma):
     if isinstance(x, torch.Tensor):
         n = x.size(0)
-        return F.conv1d(F.pad(x, (0, n - 1)).view(1, 1, -1), gamma ** torch.arange(n, dtype=x.dtype).view(1, 1, -1)).view(-1)
+        return F.conv1d(
+            F.pad(x, (0, n - 1)).view(1, 1, -1),
+            gamma ** torch.arange(n, dtype=x.dtype).view(1, 1, -1),
+        ).view(-1)
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
+
 
 def explained_variance(y_pred, y_true):
     if not len(y_pred):
@@ -39,12 +44,14 @@ def explained_variance(y_pred, y_true):
     var_y = np.var(y_true)
     return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
+
 class RunningStats:
-    '''
+    """
     Tracks first and second moments (mean and variance) of a streaming time series
     https://github.com/joschu/modular_rl
     http://www.johndcook.com/blog/standard_deviation/
-    '''
+    """
+
     def __init__(self):
         self.n = 0
         self.mean = 0
@@ -58,18 +65,22 @@ class RunningStats:
             old_mean = self.mean
             self.mean = old_mean + (x - old_mean) / self.n
             self._nstd = self._nstd + (x - old_mean) * (x - self.mean)
+
     @property
     def var(self):
         return self._nstd / (self.n - 1) if self.n > 1 else np.square(self.mean)
+
     @property
     def std(self):
         return np.sqrt(self.var)
+
 
 class NamedArrays(dict):
     """
     Data structure for keeping track of a dictionary of arrays (used for rollout information)
     e.g. {'reward': [...], 'action': [...]}
     """
+
     def __init__(self, dict_of_arrays={}, **kwargs):
         kwargs.update(dict_of_arrays)
         super().__init__(kwargs)
@@ -113,7 +124,9 @@ class NamedArrays(dict):
                 self.setdefault(k, []).extend(v)
 
     def to_array(self, inplace=True, dtype=None, concat=False):
-        return self.apply(np.concatenate if concat else lambda x: np.asarray(x, dtype=dtype), inplace)
+        return self.apply(
+            np.concatenate if concat else lambda x: np.asarray(x, dtype=dtype), inplace
+        )
 
     def to_torch(self, dtype=None, device=None):
         for k, v in self.items():
@@ -123,7 +136,9 @@ class NamedArrays(dict):
                 v.to_torch(dtype, device)
             else:
                 if v.dtype == object:
-                    self[k] = [torch.tensor(np.ascontiguousarray(x), device=device) for x in v]
+                    self[k] = [
+                        torch.tensor(np.ascontiguousarray(x), device=device) for x in v
+                    ]
                 else:
                     self[k] = torch.tensor(np.ascontiguousarray(v), device=device)
         return self
@@ -139,9 +154,11 @@ class NamedArrays(dict):
     def filter(self, *args):
         return type(self)((k, v) for k, v in self.items() if k in args)
 
-    def iter_minibatch(self, n_minibatches=None, concat=False, device='cpu'):
+    def iter_minibatch(self, n_minibatches=None, concat=False, device="cpu"):
         if n_minibatches in [1, None]:
-            yield slice(None), self.to_array(inplace=False, concat=concat).to_torch(device=device)
+            yield slice(None), self.to_array(inplace=False, concat=concat).to_torch(
+                device=device
+            )
         else:
             for idxs in np.array_split(np.random.permutation(len(self)), n_minibatches):
                 mini_batch = {}
@@ -149,14 +166,20 @@ class NamedArrays(dict):
                 for k, v in self.items():
                     if isinstance(v, list):
                         # TODO fix that, probably not good to have to precise dtype=object
-                        mini_batch[k] = (np.array(v, dtype=object)[idxs.tolist()]).tolist()
+                        mini_batch[k] = (
+                            np.array(v, dtype=object)[idxs.tolist()]
+                        ).tolist()
                     elif isinstance(v, NamedArrays):
-                        mini_batch[k] = NamedArrays({
-                            k1: (np.array(v1, dtype=object)[idxs.tolist()]).tolist()
-                            for k1, v1 in v.items()
-                        })
+                        mini_batch[k] = NamedArrays(
+                            {
+                                k1: (np.array(v1, dtype=object)[idxs.tolist()]).tolist()
+                                for k1, v1 in v.items()
+                            }
+                        )
                 na = NamedArrays(mini_batch)
-                yield idxs, na.to_array(inplace=False, concat=concat).to_torch(device=device)
+                yield idxs, na.to_array(inplace=False, concat=concat).to_torch(
+                    device=device
+                )
 
     def apply(self, fn, inplace=True):
         if inplace:
@@ -167,7 +190,10 @@ class NamedArrays(dict):
                     self[k] = fn(v)
             return self
         else:
-            return type(self)((k, v.apply(fn, inplace=False) if isinstance(v, NamedArrays) else fn(v)) for k, v in self.items())
+            return type(self)(
+                (k, v.apply(fn, inplace=False) if isinstance(v, NamedArrays) else fn(v))
+                for k, v in self.items()
+            )
 
     def __getstate__(self):
         return dict(**self)
@@ -180,20 +206,33 @@ class NamedArrays(dict):
         named_arrays = list(named_arrays)
         if not len(named_arrays):
             return cls()
+
         def concat(xs):
             """
-            Common error with np.concatenate: conside arrays a and b, both of which are lists of arrays. 
-            If a contains irregularly shaped arrays and b contains arrays with the same shape, the numpy 
-            will treat b as a 2D array, and the concatenation will fail. 
+            Common error with np.concatenate: conside arrays a and b, both of which are lists of arrays.
+            If a contains irregularly shaped arrays and b contains arrays with the same shape, the numpy
+            will treat b as a 2D array, and the concatenation will fail.
             Solution: use flatten instead of np.concatenate for lists of arrays
             """
-            try: return np.concatenate(xs)
-            except: return flatten(xs)
-        get_concat = lambda v: v.concat if isinstance(v, NamedArrays) else fn or (torch.cat if isinstance(v, torch.Tensor) else concat)
-        return cls((k, get_concat(v)([x[k] for x in named_arrays])) for k, v in named_arrays[0].items())
+            try:
+                return np.concatenate(xs)
+            except:
+                return flatten(xs)
+
+        get_concat = (
+            lambda v: v.concat
+            if isinstance(v, NamedArrays)
+            else fn or (torch.cat if isinstance(v, torch.Tensor) else concat)
+        )
+        return cls(
+            (k, get_concat(v)([x[k] for x in named_arrays]))
+            for k, v in named_arrays[0].items()
+        )
+
 
 class Dist:
-    """ Distribution interface """
+    """Distribution interface"""
+
     def __init__(self, inputs):
         self.inputs = inputs
 
@@ -215,8 +254,10 @@ class Dist:
     def __getitem__(self, idx):
         return type(self)(self.inputs[idx])
 
+
 class CatDist(Dist):
-    """ Categorical distribution (for discrete action spaces) """
+    """Categorical distribution (for discrete action spaces)"""
+
     def __init__(self, inputs):
         super().__init__(inputs)
         self.dist = torch.distributions.categorical.Categorical(logits=inputs)
@@ -224,8 +265,10 @@ class CatDist(Dist):
     def argmax(self):
         return self.dist.probs.argmax(dim=-1)
 
+
 class DiagGaussianDist(Dist):
-    """ Diagonal Gaussian distribution (for continuous action spaces) """
+    """Diagonal Gaussian distribution (for continuous action spaces)"""
+
     def __init__(self, inputs):
         super().__init__(inputs)
         self.mean, self.log_std = torch.chunk(inputs, 2, dim=-1)
@@ -244,30 +287,41 @@ class DiagGaussianDist(Dist):
     def entropy(self):
         return super().entropy().squeeze(dim=-1)
 
+
 def build_dist(space):
     """
     Build a nested distribution
     """
     if isinstance(space, Box):
+
         class DiagGaussianDist_(DiagGaussianDist):
             model_output_size = np.prod(space.shape) * 2
+
         return DiagGaussianDist_
     elif isinstance(space, Discrete):
+
         class CatDist_(CatDist):
             model_output_size = space.n
+
         return CatDist_
 
-    assert isinstance(space, dict) # Doesn't support lists at the moment since there's no list equivalent of NamedArrays that allows advanced indexing
+    assert isinstance(
+        space, dict
+    )  # Doesn't support lists at the moment since there's no list equivalent of NamedArrays that allows advanced indexing
     names, subspaces = zip(*space.items())
     to_list = lambda x: [x[name] for name in names]
     from_list = lambda x: NamedArrays(zip(names, x))
     subdist_classes = [build_dist(subspace) for subspace in subspaces]
     subsizes = [s.model_output_size for s in subdist_classes]
+
     class Dist_(Dist):
         model_output_size = sum(subsizes)
+
         def __init__(self, inputs):
             super().__init__(inputs)
-            self.dists = from_list(cl(x) for cl, x in zip(subdist_classes, inputs.split(subsizes, dim=-1)))
+            self.dists = from_list(
+                cl(x) for cl, x in zip(subdist_classes, inputs.split(subsizes, dim=-1))
+            )
 
         def sample(self, shape=torch.Size([])):
             return from_list([dist.sample(shape) for dist in to_list(self.dists)])
@@ -276,21 +330,33 @@ def build_dist(space):
             return from_list([dist.argmax() for dist in to_list(self.dists)])
 
         def logp(self, actions):
-            return sum(dist.logp(a) for a, dist in zip(to_list(actions), to_list(self.dists)))
+            return sum(
+                dist.logp(a) for a, dist in zip(to_list(actions), to_list(self.dists))
+            )
 
         def kl(self, other):
-            return sum(s.kl(o) for s, o in zip(to_list(self.dists), to_list(other.dists)))
+            return sum(
+                s.kl(o) for s, o in zip(to_list(self.dists), to_list(other.dists))
+            )
 
         def entropy(self):
             return sum(dist.entropy() for dist in to_list(self.dists))
+
     return Dist_
+
 
 def build_fc(input_size, *sizes_and_modules):
     """
     Build a fully connected network
     """
     layers = []
-    str_map = dict(relu=nn.ReLU(inplace=True), tanh=nn.Tanh(), sigmoid=nn.Sigmoid(), flatten=nn.Flatten(), softmax=nn.Softmax())
+    str_map = dict(
+        relu=nn.ReLU(inplace=True),
+        tanh=nn.Tanh(),
+        sigmoid=nn.Sigmoid(),
+        flatten=nn.Flatten(),
+        softmax=nn.Softmax(),
+    )
     for x in sizes_and_modules:
         if isinstance(x, (int, np.integer)):
             input_size, x = x, nn.Linear(input_size, x)
@@ -299,10 +365,15 @@ def build_fc(input_size, *sizes_and_modules):
         layers.append(x)
     return nn.Sequential(*layers)
 
+
 class FFN(nn.Module):
     def __init__(self, c):
         super().__init__()
-        self.c = c.setdefaults(layers=[64, 'tanh', 64, 'tanh'], weight_scale='default', weight_init='orthogonal')
+        self.c = c.setdefaults(
+            layers=[64, "tanh", 64, "tanh"],
+            weight_scale="default",
+            weight_init="orthogonal",
+        )
         layers = c.layers
         if isinstance(layers, list):
             layers = Namespace(s=[], v=layers, p=layers)
@@ -312,11 +383,11 @@ class FFN(nn.Module):
         self.shared = build_fc(*s_sizes)
 
         self.p_head = build_fc(s_sizes[-1], *layers.p, c.model_output_size)
-        self.sequential_init(self.p_head, 'policy')
+        self.sequential_init(self.p_head, "policy")
         self.v_head = None
-        if True:#c.use_critic:
+        if True:  # c.use_critic:
             self.v_head = build_fc(s_sizes[-1], *layers.v, 1)
-            self.sequential_init(self.v_head, 'value')
+            self.sequential_init(self.v_head, "value")
 
     def sequential_init(self, seq, key):
         c = self.c
@@ -330,17 +401,16 @@ class FFN(nn.Module):
                 scale = c.weight_scale[key][i]
             else:
                 scale = 0.01 if m == linears[-1] else 1
-            if c.weight_init == 'normc': # normalize along input dimension
+            if c.weight_init == "normc":  # normalize along input dimension
                 weight = torch.randn_like(m.weight)
                 m.weight.data = weight * scale / weight.norm(dim=1, keepdim=True)
-            elif c.weight_init == 'orthogonal':
+            elif c.weight_init == "orthogonal":
                 nn.init.orthogonal_(m.weight, gain=scale)
-            elif c.weight_init == 'xavier':
+            elif c.weight_init == "xavier":
                 nn.init.xavier_normal_(m.weight, gain=scale)
             nn.init.zeros_(m.bias)
 
     def forward(self, inp, value=False, policy=False, argmax=None):
-  
         s = self.shared(inp)
         pred = Namespace()
         if value and self.v_head:
@@ -352,35 +422,43 @@ class FFN(nn.Module):
                 pred.action = dist.argmax() if argmax else dist.sample()
         return pred
 
+
 def calc_adv(reward, gamma, value_=None, lam=None):
     """
     Calculate advantage with TD-lambda
     """
     if value_ is None:
-        return discount(reward, gamma), None # TD(1)
+        return discount(reward, gamma), None  # TD(1)
     if isinstance(reward, list):
         reward = np.array([np.array(x) for x in reward])
         value_ = np.array([np.array(x) for x in value_])
-    assert value_.ndim == reward.ndim == 1, f'Value and reward be one dimensional, but got {value_.shape} and {reward.shape} respectively'
-    assert value_.shape[0] - reward.shape[0] in [0, 1], f'Value\'s shape can be at most 1 bigger than reward\'s shape, but got {value_.shape} and {reward.shape} respectively'
-    
+    assert (
+        value_.ndim == reward.ndim == 1
+    ), f"Value and reward be one dimensional, but got {value_.shape} and {reward.shape} respectively"
+    assert value_.shape[0] - reward.shape[0] in [
+        0,
+        1,
+    ], f"Value's shape can be at most 1 bigger than reward's shape, but got {value_.shape} and {reward.shape} respectively"
+
     if value_.shape[0] == reward.shape[0]:
         delta = reward - value_
         delta[:-1] += gamma * value_[1:]
     else:
         delta = reward + gamma * value_[1:] - value_[:-1]
     adv = discount(delta, gamma * lam)
-    ret = value_[:len(adv)] + adv # discount(reward, gamma)
+    ret = value_[: len(adv)] + adv  # discount(reward, gamma)
     return ret, adv
+
 
 def discount_rewards(rewards, gamma=0.99):
     """
     Return discounted rewards based on the given rewards and gamma param.
     """
     new_rewards = [float(rewards[-1])]
-    for i in reversed(range(len(rewards)-1)):
+    for i in reversed(range(len(rewards) - 1)):
         new_rewards.append(float(rewards[i]) + gamma * new_rewards[-1])
     return np.array(new_rewards[::-1])
+
 
 def calc_adv_multi_agent(id_, reward, gamma, value_=None, lam=None):
     """
@@ -389,7 +467,7 @@ def calc_adv_multi_agent(id_, reward, gamma, value_=None, lam=None):
     id_ should be something that pandas.Series.groupby works on
     id_, reward, and value_ should be flat arrays with "shape" n_steps * n_agent_per_step
     """
-    n_id = len(reward) # number of ids BEFORE the last time step
+    n_id = len(reward)  # number of ids BEFORE the last time step
     ret = np.empty((n_id,), dtype=np.float32)
     adv = ret.copy()
     for _, group in pd.Series(id_).groupby(id_):
@@ -397,7 +475,9 @@ def calc_adv_multi_agent(id_, reward, gamma, value_=None, lam=None):
         value_i_ = None if value_ is None else value_[idxs]
         if idxs[-1] >= n_id:
             idxs = idxs[:-1]
-        ret[idxs], adv[idxs] = calc_adv(reward=reward[idxs], gamma=gamma, value_=value_i_, lam=lam)
+        ret[idxs], adv[idxs] = calc_adv(
+            reward=reward[idxs], gamma=gamma, value_=value_i_, lam=lam
+        )
     return ret, adv
 
 
@@ -405,8 +485,11 @@ class Algorithm:
     """
     RL algorithm interface
     """
+
     def __init__(self, c):
-        self.c = c.setdefaults(normclip=None, use_critic=True, lam=1, batch_concat=False, device='cpu')
+        self.c = c.setdefaults(
+            normclip=None, use_critic=True, lam=1, batch_concat=False, device="cpu"
+        )
 
     def on_step_start(self):
         return {}
@@ -418,18 +501,20 @@ class Algorithm:
         c = self.c
         mask = slice(None) if mask is None else mask
         unclipped = (v_pred - ret) ** 2
-        if v_start is None or c.vclip is None: # no value clipping
+        if v_start is None or c.vclip is None:  # no value clipping
             return unclipped[mask].mean()
         clipped_value = v_start + (v_pred - v_start).clamp(-c.vclip, c.vclip)
         clipped = (clipped_value - ret) ** 2
-        return torch.max(unclipped, clipped)[mask].mean() # no gradient if larger
+        return torch.max(unclipped, clipped)[mask].mean()  # no gradient if larger
 
     def step_loss(self, loss):
         c = self.c
         c._opt.zero_grad()
         if torch.isnan(loss):
-            import q; q.d()
-            raise RuntimeError('Encountered nan loss during training')
+            import q
+
+            q.d()
+            raise RuntimeError("Encountered nan loss during training")
         loss.backward()
         if c.normclip:
             torch.nn.utils.clip_grad_norm_(c._model.parameters(), c.normclip)
@@ -438,33 +523,53 @@ class Algorithm:
 
 class PPO(Algorithm):
     def __init__(self, c):
-        super().__init__(c.setdefaults(use_critic=True, n_gds=10, pclip=0.3, vcoef=1, vclip=10.0, klcoef=0.2, kltarg=0.02, entcoef=0))
+        super().__init__(
+            c.setdefaults(
+                use_critic=True,
+                n_gds=10,
+                pclip=0.3,
+                vcoef=1,
+                vclip=10.0,
+                klcoef=0.2,
+                kltarg=0.02,
+                entcoef=0,
+            )
+        )
 
     def on_step_start(self):
         stats = dict(klcoef=self.c.klcoef)
         if self.c.entcoef:
-            stats['entcoef'] = self.entcoef
+            stats["entcoef"] = self.entcoef
         return stats
 
     @property
     def entcoef(self):
         c = self.c
-        return c.schedule(c.entcoef, c.get('ent_schedule'))
+        return c.schedule(c.entcoef, c.get("ent_schedule"))
 
     def optimize(self, rollouts):
         c = self.c
-        batch = rollouts.filter('obs', 'policy', 'action', 'pg_obj', 'ret', *lif(c.use_critic, 'value', 'adv'))
-        value_warmup = c._i < c.get('n_value_warmup', 0)
+        batch = rollouts.filter(
+            "obs",
+            "policy",
+            "action",
+            "pg_obj",
+            "ret",
+            *lif(c.use_critic, "value", "adv"),
+        )
+        value_warmup = c._i < c.get("n_value_warmup", 0)
 
         stop_update = False
         for i_gd in range(c.n_gds):
             batch_stats = []
-            for idxs, mb in batch.iter_minibatch(c.get('n_minibatches'), concat=c.batch_concat, device=c.device):
+            for idxs, mb in batch.iter_minibatch(
+                c.get("n_minibatches"), concat=c.batch_concat, device=c.device
+            ):
                 if not len(mb):
                     continue
                 start_dist = c.dist_class(mb.policy)
                 start_logp = start_dist.logp(mb.action)
-                if 'pg_obj' not in batch:
+                if "pg_obj" not in batch:
                     mb.pg_obj = mb.adv if c.use_critic else mb.ret
                 pred = c._model(mb.obs, value=True, policy=True)
                 curr_dist = c.dist_class(pred.policy)
@@ -476,25 +581,28 @@ class PPO(Algorithm):
 
                 policy_loss = -torch.min(
                     pg_obj * p_ratio,
-                    pg_obj * p_ratio.clamp(1 - c.pclip, 1 + c.pclip) # no gradient if larger
+                    pg_obj
+                    * p_ratio.clamp(1 - c.pclip, 1 + c.pclip),  # no gradient if larger
                 ).mean()
 
                 kl = start_dist.kl(curr_dist).mean()
                 entropy = curr_dist.entropy().mean()
 
                 loss = policy_loss + c.klcoef * kl - self.entcoef * entropy
-                stats = dict(
-                    policy_loss=policy_loss, kl=kl, entropy=entropy
-                )
+                stats = dict(policy_loss=policy_loss, kl=kl, entropy=entropy)
 
                 if value_warmup:
                     loss = loss.detach()
 
                 if c.use_critic:
-                    value_mask = mb.obs.get('value_mask') if isinstance(mb.obs, dict) else None
-                    value_loss = self.value_loss(pred.value, mb.ret, v_start=mb.value, mask=value_mask)
+                    value_mask = (
+                        mb.obs.get("value_mask") if isinstance(mb.obs, dict) else None
+                    )
+                    value_loss = self.value_loss(
+                        pred.value, mb.ret, v_start=mb.value, mask=value_mask
+                    )
                     loss += c.vcoef * value_loss
-                    stats['value_loss'] = value_loss
+                    stats["value_loss"] = value_loss
                 self.step_loss(loss)
                 batch_stats.append(from_torch(stats))
 
@@ -514,12 +622,23 @@ class PPO(Algorithm):
             elif kl < 0.5 * c.kltarg:
                 c.klcoef *= 0.5
 
+
 class TRPO(Algorithm):
     def __init__(self, c):
-        if c.get('max_kl'):
+        if c.get("max_kl"):
             c.start_max_kl = c.end_max_kl = c.max_kl
-        super().__init__(c.setdefaults(
-            use_critic=True, start_max_kl=0.01, end_max_kl=0.01, steps_cg=10, steps_backtrack=10, damping=0.1, accept_ratio=0.1, n_gds=1))
+        super().__init__(
+            c.setdefaults(
+                use_critic=True,
+                start_max_kl=0.01,
+                end_max_kl=0.01,
+                steps_cg=10,
+                steps_backtrack=10,
+                damping=0.1,
+                accept_ratio=0.1,
+                n_gds=1,
+            )
+        )
 
     @property
     def max_kl(self):
@@ -531,15 +650,25 @@ class TRPO(Algorithm):
 
     def optimize(self, rollouts):
         c = self.c
-        batch = rollouts.filter('obs', 'policy', 'action', 'pg_obj', 'ret', *lif(c.use_critic, 'value', 'adv'))
-        (_, b), = batch.iter_minibatch(None, concat=c.batch_concat, device=c.device) # to be consistent with PPO
+        batch = rollouts.filter(
+            "obs",
+            "policy",
+            "action",
+            "pg_obj",
+            "ret",
+            *lif(c.use_critic, "value", "adv"),
+        )
+        ((_, b),) = batch.iter_minibatch(
+            None, concat=c.batch_concat, device=c.device
+        )  # to be consistent with PPO
 
-        pg_obj = b.pg_obj if 'pg_obj' in b else b.adv if c.use_critic else b.ret
+        pg_obj = b.pg_obj if "pg_obj" in b else b.adv if c.use_critic else b.ret
 
         if c.adv_norm:
             pg_obj = normalize(pg_obj)
         start_dist = c.dist_class(b.policy)
         start_logp = start_dist.logp(b.action)
+
         def surrogate(dist):
             p_ratio = (dist.logp(b.action) - start_logp).exp()
             return (pg_obj * p_ratio).mean()
@@ -553,25 +682,32 @@ class TRPO(Algorithm):
 
         params = list(c._model.p_head.parameters())
         flat_start_params = parameters_to_vector(params).clone()
-        grad_obj = parameters_to_vector(torch.autograd.grad(obj, params, retain_graph=True))
+        grad_obj = parameters_to_vector(
+            torch.autograd.grad(obj, params, retain_graph=True)
+        )
 
         # Make fisher product estimator
-        kl = start_dist.kl(pred_dist).mean() # kl is 0, but we care about the gradient
-        grad_kl = parameters_to_vector(torch.autograd.grad(kl, params, create_graph=True))
+        kl = start_dist.kl(pred_dist).mean()  # kl is 0, but we care about the gradient
+        grad_kl = parameters_to_vector(
+            torch.autograd.grad(kl, params, create_graph=True)
+        )
 
-        def fvp_fn(x): # fisher vector product
-            return parameters_to_vector(
-                torch.autograd.grad(grad_kl @ x, params, retain_graph=True)
-            ).detach() + x * c.damping
+        def fvp_fn(x):  # fisher vector product
+            return (
+                parameters_to_vector(
+                    torch.autograd.grad(grad_kl @ x, params, retain_graph=True)
+                ).detach()
+                + x * c.damping
+            )
 
         def cg_solve(fvp_fn, b, nsteps):
             """
             Conjugate Gradients Algorithm
             Solves Hx = b, where H is the Fisher matrix and b is known
             """
-            x = torch.zeros_like(b) # solution
-            r = b.clone() # residual
-            p = b.clone() # direction
+            x = torch.zeros_like(b)  # solution
+            r = b.clone()  # residual
+            p = b.clone()  # direction
             new_rnorm = r @ r
             for _ in range(nsteps):
                 rnorm = new_rnorm
@@ -582,10 +718,11 @@ class TRPO(Algorithm):
                 new_rnorm = r @ r
                 p = r + new_rnorm / rnorm * p
             return x
+
         step = cg_solve(fvp_fn, grad_obj, c.steps_cg)
         max_trpo_step = (2 * self.max_kl / (step @ fvp_fn(step))).sqrt() * step
 
-        with torch.no_grad(): # backtrack until we find best step
+        with torch.no_grad():  # backtrack until we find best step
             improve_thresh = grad_obj @ max_trpo_step * c.accept_ratio
             step = max_trpo_step
             for i_scale in range(c.steps_backtrack):
@@ -604,17 +741,35 @@ class TRPO(Algorithm):
                 kl = 0
 
         if c.use_critic:
-            shared = getattr(c._model, 'shared', None)
+            shared = getattr(c._model, "shared", None)
             if shared is not None:
-                assert len(shared) == 0, 'Value network and policy network cannot share weights'
+                assert (
+                    len(shared) == 0
+                ), "Value network and policy network cannot share weights"
             for i_gd in range(c.n_gds):
                 batch_stats = []
-                for idxs, mb in rollouts.iter_minibatch(c.get('n_minibatches'), concat=c.batch_concat, device=c.device):
+                for idxs, mb in rollouts.iter_minibatch(
+                    c.get("n_minibatches"), concat=c.batch_concat, device=c.device
+                ):
                     pred = c._model(mb.obs, value=True)
-                    value_mask = mb.obs.get('value_mask') if isinstance(mb.obs, dict) else None
+                    value_mask = (
+                        mb.obs.get("value_mask") if isinstance(mb.obs, dict) else None
+                    )
                     value_loss = self.value_loss(pred.value, mb.ret, mask=value_mask)
                     self.step_loss(value_loss)
                     batch_stats.append(dict(value_loss=from_torch(value_loss)))
-                c.log_stats(pd.DataFrame(batch_stats).mean(axis=0), ii=i_gd, n_ii=c.n_gds)
+                c.log_stats(
+                    pd.DataFrame(batch_stats).mean(axis=0), ii=i_gd, n_ii=c.n_gds
+                )
         entropy = test_dist.entropy().mean()
-        c.log_stats(from_torch(dict(policy_loss=-obj, final_policy_loss=-test_obj, i_scale=i_scale, kl=kl, entropy=entropy)))
+        c.log_stats(
+            from_torch(
+                dict(
+                    policy_loss=-obj,
+                    final_policy_loss=-test_obj,
+                    i_scale=i_scale,
+                    kl=kl,
+                    entropy=entropy,
+                )
+            )
+        )

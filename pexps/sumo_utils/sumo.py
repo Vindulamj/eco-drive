@@ -27,12 +27,12 @@ import sumolib
 import os
 import sys
 
-if 'LIBSUMO' in os.environ:
-    print('Using LIBSUMO')
-    sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
+if "LIBSUMO" in os.environ:
+    print("Using LIBSUMO")
+    sys.path.append(os.path.join(os.environ["SUMO_HOME"], "tools"))
     import libsumo as traci
 else:
-    print('Using TRACI')
+    print("Using TRACI")
     import traci
     import traci.constants as T  # https://sumo.dlr.de/pydoc/traci.constants.html
     from traci.exceptions import FatalTraCIError, TraCIException
@@ -106,7 +106,6 @@ class SumoDef:
         config_path = self.dir + "/sumo_config.sumocfg"
         cmd = ["sumo-gui" if c.render else "sumo", "-c", config_path]
         for k, v in sumo_args.items():
-
             cmd.extend(
                 ["--%s" % k, (str(v).lower() if isinstance(v, bool) else str(v))]
                 if v is not None
@@ -135,7 +134,9 @@ class SumoDef:
                     )
                     tc = traci.connect(self.port, 10, "localhost", p)
                 return tc
-            except traci.exceptions.FatalTraCIError:  # Sometimes there's an unknown error while starting SUMO
+            except (
+                traci.exceptions.FatalTraCIError
+            ):  # Sometimes there's an unknown error while starting SUMO
                 if tc:
                     tc.close()
                 self.c.log("Restarting SUMO...")
@@ -269,7 +270,6 @@ class TrafficState:
         tmp = self.vehicles.copy()
         for veh_id in tmp.keys():
             if veh_id not in sim_res.arrived_vehicles_ids:
-
                 self.vehicles[veh_id].update(
                     veh_info[(veh_id, "road_id")],
                     veh_info[(veh_id, "lane_id")],
@@ -391,7 +391,7 @@ class TrafficState:
 
     def get_edge(self, veh):
         return self.vehicles[veh].road_id
-    
+
     def get_lane_length(self, lane):
         return self.tc.lane.getLength(lane)
 
@@ -429,8 +429,8 @@ class TrafficState:
             if v_lane_id == lane_id:
                 v_lane_pos = self.vehicles[veh_id].laneposition
                 if v_lane_pos >= lane_pos:
-                    #print(f"my id {veh} and leader {veh_id}.")
-                    #print(f"my pos {lane_pos} and leader pos {v_lane_pos}.")
+                    # print(f"my id {veh} and leader {veh_id}.")
+                    # print(f"my pos {lane_pos} and leader pos {v_lane_pos}.")
                     candidates[veh_id] = v_lane_pos - lane_pos
         # if empty, return None
         if not bool(candidates):
@@ -449,7 +449,7 @@ class TrafficState:
         route_id = self.vehicles[veh].route_id
         incoming_lane_lebgth = self.tc.lane.getLength(lane_id)
         intersection_length = self.tc.lane.getLength(":TL_1_0")
-        veh_length = self.tc.vehicle.getLength(veh)          
+        veh_length = self.tc.vehicle.getLength(veh)
         candidates = {}
 
         for veh_id in self.vehicles.keys():
@@ -461,8 +461,19 @@ class TrafficState:
                     candidates[veh_id] = v_lane_pos - lane_pos - veh_length
             elif v_route_id == route_id:
                 v_lane_pos = self.vehicles[veh_id].laneposition
-                if v_lane_id == "TL2S_0" or v_lane_id == "TL2N_0" or v_lane_id == "TL2W_0" or v_lane_id == "TL2E_0":
-                    candidates[veh_id] = incoming_lane_lebgth + intersection_length + v_lane_pos - lane_pos - veh_length
+                if (
+                    v_lane_id == "TL2S_0"
+                    or v_lane_id == "TL2N_0"
+                    or v_lane_id == "TL2W_0"
+                    or v_lane_id == "TL2E_0"
+                ):
+                    candidates[veh_id] = (
+                        incoming_lane_lebgth
+                        + intersection_length
+                        + v_lane_pos
+                        - lane_pos
+                        - veh_length
+                    )
 
         # if empty, return None
         if not bool(candidates):
@@ -481,7 +492,7 @@ class TrafficState:
         route_id = self.vehicles[veh].route_id
         incoming_lane_lebgth = self.tc.lane.getLength(lane_id)
         intersection_length = self.tc.lane.getLength(":TL_1_0")
-        veh_length = self.tc.vehicle.getLength(veh)    
+        veh_length = self.tc.vehicle.getLength(veh)
 
         candidates = {}
 
@@ -494,8 +505,19 @@ class TrafficState:
                     candidates[veh_id] = lane_pos - v_lane_pos - veh_length
             elif v_route_id == route_id:
                 v_lane_pos = self.vehicles[veh_id].laneposition
-                if v_lane_id == "S2TL_0" or v_lane_id == "E2TL_0" or v_lane_id == "W2TL_0" or v_lane_id == "N2TL_0":
-                    candidates[veh_id] = incoming_lane_lebgth + intersection_length + lane_pos - v_lane_pos - veh_length
+                if (
+                    v_lane_id == "S2TL_0"
+                    or v_lane_id == "E2TL_0"
+                    or v_lane_id == "W2TL_0"
+                    or v_lane_id == "N2TL_0"
+                ):
+                    candidates[veh_id] = (
+                        incoming_lane_lebgth
+                        + intersection_length
+                        + lane_pos
+                        - v_lane_pos
+                        - veh_length
+                    )
         # if empty, return None
         if not bool(candidates):
             return None
@@ -604,17 +626,16 @@ class TrafficState:
         v = self.get_speed(veh)
         leader_info = self.get_leader(veh)
 
-        if leader_info is None or leader_info == '':  # no car ahead
+        if leader_info is None or leader_info == "":  # no car ahead
             s_star = 0
             h = 1e-10
         else:
             lead_id, h = leader_info
             lead_vel = self.get_speed(lead_id)
-            s_star = s0 + max(0, v * T + (v * (v - lead_vel) /(2 * np.sqrt(a * b))))
-            
-        accel = a * (1 - (v / v0)**delta - (s_star/h)**2)
+            s_star = s0 + max(0, v * T + (v * (v - lead_vel) / (2 * np.sqrt(a * b))))
+
+        accel = a * (1 - (v / v0) ** delta - (s_star / h) ** 2)
         if noise:
             n = np.random.uniform(-0.2, 0.2)
             accel += n
         self.tc.vehicle.slowDown(veh, max(0, v + accel * self.c.sim_step), 0)
-        

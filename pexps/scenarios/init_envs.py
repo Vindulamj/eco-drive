@@ -27,8 +27,8 @@ from .no_stop import NoStopRLEnv
 from .no_stop_idm import NoStopIDMEnv
 from .no_stop_baseline import NoStopBaselineEnv
 
-class NoStopNetwork(Main):
 
+class NoStopNetwork(Main):
     def create_env(c):
         c._norm = NormEnv(c, None)
         print(c.agent)
@@ -40,7 +40,7 @@ class NoStopNetwork(Main):
             return NoStopBaselineEnv(c)
         else:
             raise Exception("Invalid agent type!")
-            
+
     @property
     def observation_space(c):
         low = np.full(c._n_obs, -1)
@@ -48,7 +48,7 @@ class NoStopNetwork(Main):
 
     @property
     def action_space(c):
-        if c.act_type == 'accel':
+        if c.act_type == "accel":
             return Box(low=c.max_decel, high=c.max_accel, shape=(1,), dtype=np.float32)
         else:
             return Discrete(c.n_actions)
