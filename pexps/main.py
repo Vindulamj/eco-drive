@@ -27,63 +27,53 @@ from env import *
 from stats import SimulationStats
 from scenarios.init_envs import NoStopNetwork
 
-if __name__ == '__main__':
- 
+if __name__ == "__main__":
     c = NoStopNetwork.from_args(globals(), locals())
     stats = SimulationStats()
     # set the number of workers here
     n_workers = 12
-    is_test_run = True
-
-    c.setdefaults( 
-        sim_step=0.5, 
+    print(c.test_run)
+    c.setdefaults(
+        sim_step=0.5,
         adv_norm=False,
         batch_concat=True,
         render=False,
         step_save=5,
         use_ray=True,
         num_workers=n_workers,
-        per_step_rollouts=n_workers, 
-
+        per_step_rollouts=n_workers,
         max_accel=5.0,
         max_decel=-5.0,
-
         alg=TRPO,
         n_gds=10,
         n_minibatches=40,
         lr=1e-3,
         gamma=0.99,
         lam=0.97,
-        opt='Adam',
+        opt="Adam",
         norm_reward=False,
         center_reward=False,
         use_critich=True,
-
         _n_obs=11,
         n_steps=3000,
         horizon=600,
         warmup_steps=50,
-        act_type='accel',
-
+        act_type="accel",
         sumo_dir="sumo",
         # the model ID number used for testing
         e=0,
-        test_run=is_test_run,
         wandb=False,
         wandb_dry_run=True,
         wandb_proj="eco-drive",
         wandb_key="9dbd690c152c02907b37359c88b9dbf4c9c6be0b",
-
-        target_vel=15.0, 
+        target_vel=15.0,
         stats=stats,
-
         # every 'rl_fraction' vehicle is an RL vehicle. This means,
         # rl_fraction=1 => 100% RL vehicle penetration
         # rl_fraction=2 => 50% RL vehicle penetration
         # rl_fraction=5 => 20% RL vehicle penetration
         # rl_fraction=10 => 10% RL vehicle penetration
-        rl_fraction=1,  
-
+        rl_fraction=1,
         # output files
         output_tracjectory_file=False,
     )

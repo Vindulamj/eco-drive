@@ -30,8 +30,8 @@ import wandb
 class Main(Config):
     flow_base = Path.env("F")._real
 
-    def __init__(c, agent, res, *args, **kwargs):
-        super().__init__(agent, res, *args, **kwargs)
+    def __init__(c, agent, res, test_run, *args, **kwargs):
+        super().__init__(agent, res, test_run, *args, **kwargs)
 
     def create_env(c):
         raise NotImplementedError
@@ -300,7 +300,7 @@ class Main(Config):
                     has_finished_trip = True
 
             if not is_warmup_vehicle and has_finished_trip:
-                # TODO: this assumes the incoming and outgoing intersections are of the same length
+                # TODO: this assumes the incoming and outgoing lanes are of the same length
                 speeds.append((lane_length * 2 + intersection_length) / len(v_speeds))
                 fuel.append(np.sum(np.array(v_fuel)))
                 emission.append(np.sum(np.array(v_emission)))

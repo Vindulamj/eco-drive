@@ -38,14 +38,16 @@ def main_only(method):
 
 
 class Config(Namespace):
-    def __init__(self, agent, res, *args, **kwargs):
+    def __init__(self, agent, res, test_run, *args, **kwargs):
         self.res = Path(res)._real
         self.agent = agent
+        self.test_run = test_run
         super(Config, self).__init__()
         self.load()
         self.var(*args, **kwargs)
         self.setdefaults(
             name=self.res._real._name,
+            test_run=self.test_run,
             main=True,
             logger=True,
             device="cuda" if torch.cuda.is_available() else "cpu",
@@ -102,6 +104,11 @@ class Config(Namespace):
             "--res", default="temp_res", type=Path, help="Result directory"
         )
         parser.add_argument(
+            "--test", type=str2bool, nargs='?',
+                        const=True, default=False,
+                        help="Training or inference run?"
+        )
+        parser.add_argument(
             "--kwargs",
             default="tmp",
             nargs="*",
@@ -123,7 +130,7 @@ class Config(Namespace):
                     pass
             kwargs[splits[0]] = v
 
-        return cls(args.agent, args.res, **kwargs).save()
+        return cls(args.agent, args.res, args.test, **kwargs).save()
 
     def try_save_commit(self, base_dir=None):
         base_commit, diff, status = git_state(base_dir)
