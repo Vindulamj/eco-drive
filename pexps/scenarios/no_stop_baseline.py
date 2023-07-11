@@ -51,7 +51,7 @@ class NoStopBaselineEnv(Env):
         ret = super().init_env()
         c = self.c
         ts = self.ts
-        c.lane_length = ts.get_lane_length("S2TL_0")
+        c.lane_length = ts.get_lane_length("W2TL_0")
         c.intersection_length = ts.get_lane_length(":TL_1_0")
         return ret
 

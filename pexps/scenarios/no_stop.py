@@ -109,7 +109,7 @@ class NoStopRLEnv(Env):
                 car_id_num = int(veh.rsplit(".", 1)[-1])
                 # observations are only collected for rl vehicles
                 if car_id_num % c.rl_fraction != 0:  
-                        continue
+                    continue
 
                 # controlled rl vehicles are rendered in RED
                 ts.set_color(veh, color=RED)
@@ -117,9 +117,9 @@ class NoStopRLEnv(Env):
                 tmp_obs = []
                 # rl vehicle speed and distance to and from the intersection
                 self_speed = ts.get_speed(veh)
-                self_distance, self_lane = ts.get_dist_intersection(veh, 250)
+                self_distance, self_lane = ts.get_dist_intersection(veh, c.lane_length)
                 road_id = self_lane.split("_")[0]
-                tmp_obs.append(self_distance/250) 
+                tmp_obs.append(self_distance/c.lane_length) 
                 tmp_obs.append(self_speed/c.target_vel)
 
                 # leader speed and relative distance 
@@ -128,19 +128,16 @@ class NoStopRLEnv(Env):
                 if leader_info is None:
                     if road_id not in incoming_roads:
                         leader_speed = c.target_vel # padding with maximum velocity
-                        # TODO: change the max to be extracted from the network
-                        leader_dist = 250 # padding with max
+                        leader_dist = c.lane_length # padding with max
                     else:
                         # at this point we know that 'veh' is a leading vehicle in an incoming approach
                         leader_speed = c.target_vel # padding with maximum velocity
-                        # TODO: change the max to be extracted from the network
-                        leader_dist = 250 # padding with max
+                        leader_dist = c.lane_length # padding with max
                 else:
                     leader_id, leader_dist = leader_info
                     leader_speed = ts.get_speed(leader_id)
                 tmp_obs.append(leader_speed/c.target_vel)
-                # TODO: change the max to be extracted from the network
-                tmp_obs.append(leader_dist/250)
+                tmp_obs.append(leader_dist/c.lane_length)
                 
                 # follower speed and relative distance
                 # TODO limit the visible distance to d = 100m
@@ -148,20 +145,19 @@ class NoStopRLEnv(Env):
                 if follower_info is None:
                     # fill with padding values
                     follower_speed = c.target_vel # padding with max
-                    # TODO: change the max to be extracted from the network
-                    follower_dist = 250 # padding with max
+                    follower_dist = c.lane_length # padding with max
                 else:
                     follower_id, follower_dist = follower_info
                     follower_speed = ts.get_speed(follower_id)
                 tmp_obs.append(follower_speed/ c.target_vel)
-                # TODO: change the max to be extracted from the network
-                tmp_obs.append(follower_dist/250)
+                tmp_obs.append(follower_dist/c.lane_length)
 
                 if road_id not in incoming_roads:
                     tmp_obs.append(2) #padding
                     tmp_obs.append(2) #padding
                     tmp_obs.append(2) #padding
                 else:
+                    # TODO the normalization constants needs to be extracted from the network file
                     if current_phase == 0:
                         tmp_obs.append(1) # red light
                         tmp_obs.append(1) # next phase
@@ -360,14 +356,12 @@ class NoStopRLEnv(Env):
 
             if warmup:
                 if v_lane.startswith('TL2'):
-                    # TODO remove this hard coded values
-                    data_list = [v_speed, v_fuel, v_emiission, 0, 1] if v_lane_pos > 240 else [v_speed, v_fuel, v_emiission, 0, 0]
+                    data_list = [v_speed, v_fuel, v_emiission, 0, 1] if v_lane_pos > c.lane_length - 10 else [v_speed, v_fuel, v_emiission, 0, 0]
                 else:
                     data_list = [v_speed, v_fuel, v_emiission, 0, 0]
             else:
                 if v_lane.startswith('TL2'):
-                    # TODO remove this hard coded values
-                    data_list = [v_speed, v_fuel, v_emiission, 1, 1] if v_lane_pos > 240 else [v_speed, v_fuel, v_emiission, 1, 0]
+                    data_list = [v_speed, v_fuel, v_emiission, 1, 1] if v_lane_pos > c.lane_length - 10 else [v_speed, v_fuel, v_emiission, 1, 0]
                 else:
                     data_list = [v_speed, v_fuel, v_emiission, 1, 0]
 
