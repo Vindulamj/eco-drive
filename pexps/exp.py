@@ -173,15 +173,6 @@ class Main(Config):
         for g in c._opt.param_groups:
             g["lr"] = float(lr)
         c.log_stats(dict(**stats, **c._alg.on_step_start(), lr=lr))
-        try:
-            if c.wandb:
-                # log the training progress in wandb
-                wandb.log({"total time": 10}, step=c._i)
-        except KeyError:
-            print("Wandb recording error!!")
-            pass
-
-        c.stats.reset()
 
         if c._i % c.step_save == 0:
             c.save_train_results(c._results)
@@ -195,7 +186,9 @@ class Main(Config):
             import ray
 
             weights_id = ray.put({k: v.cpu() for k, v in c._model.state_dict().items()})
+
             [w.set_weights.remote(weights_id) for w in c._rollout_workers]
+
             rollout_stats = flatten(
                 ray.get(
                     [
@@ -206,11 +199,19 @@ class Main(Config):
             )
         else:
             rollout_stats = c.rollouts_single_process(worker_id=0)
+
+        all_stats = [rollout_stats[i][-1] for i, _ in enumerate(rollout_stats)]
+        stats_summary = [
+            {k: np.mean([s[k] for s in all_stats]) for k in all_stats[0].keys()}
+        ]
+        c.stats.store_stats(stats_summary, c.wandb, c._i)
+
         # compute advantage estimate from the rollout
         rollouts = [
             c.on_rollout_end(*rollout_stat, ii=ii, n_ii=c.n_rollouts_per_step)
             for ii, rollout_stat in enumerate(rollout_stats)
         ]
+
         return NamedArrays.concat(rollouts, fn=flatten)
 
     def rollouts_single_process(c, worker_id=0):
@@ -274,17 +275,22 @@ class Main(Config):
             step += 1
 
         stats = {"steps": step}
+        stats = c.process_stats(c, stats)
 
+        return rollout, stats
+
+    def process_stats(self, c, stats):
+        # extract the stats from the rollout and pack it for logging
         speeds = []
         fuel = []
         emission = []
 
-        lane_length = c.lane_length
-        intersection_length = c.intersection_length
-
         for k in c.stats.veh_data.keys():
             data_ary = c.stats.veh_data[k]
-            v_speeds = v_fuel = v_emission = []
+
+            v_speeds = []
+            v_fuel = []
+            v_emission = []
             is_warmup_vehicle = False
             has_finished_trip = False
 
@@ -300,23 +306,35 @@ class Main(Config):
                     has_finished_trip = True
 
             if not is_warmup_vehicle and has_finished_trip:
-                # TODO: this assumes the incoming and outgoing lanes are of the same length
-                speeds.append((lane_length * 2 + intersection_length) / len(v_speeds))
+                speeds.append(np.mean(np.array(v_speeds)))
                 fuel.append(np.sum(np.array(v_fuel)))
                 emission.append(np.sum(np.array(v_emission)))
 
-        # record running stats
-        c.stats.veh_speed_data_avg.append(np.mean(np.array(speeds)))
-        c.stats.veh_speed_data_avg.append(np.mean(np.array(speeds)))
-        c.stats.veh_fuel_data_avg.append(np.mean(np.array(fuel)))
-        c.stats.veh_emission_data_avg.append(np.mean(np.array(emission)))
+        # episode stats
+        speed_mean = np.mean(np.array(speeds))
+        fuel_mean = np.mean(np.array(fuel))
+        fuel_sum = np.sum(np.array(fuel))
+        emission_mean = np.mean(np.array(emission))
+        emission_sum = np.sum(np.array(emission))
 
-        c.stats.print_stats(epi_speeds=speeds, epi_fuel=fuel)
+        if np.isnan(speed_mean):
+            speed_mean = 0
+        if np.isnan(fuel_mean):
+            fuel_mean = 0
+        if np.isnan(emission_mean):
+            emission_mean = 0
+        if np.isnan(emission_sum):
+            emission_sum = 0
+        if np.isnan(fuel_sum):
+            fuel_sum = 0
 
-        # reset data strcutures carrying episode data
-        c.stats.reset()
+        stats["speed"] = speed_mean
+        stats["fuel"] = fuel_mean
+        stats["emission"] = emission_mean
+        stats["fuel_sum"] = fuel_sum
+        stats["emission_sum"] = emission_sum
 
-        return rollout, stats
+        return stats
 
     def on_rollout_end(c, rollout, stats, ii=None, n_ii=None):
         """
@@ -456,7 +474,7 @@ class Main(Config):
                 use_ray=False,
                 n_rollouts_per_worker=c.n_rollouts_per_step // c.n_workers,
             )
-            print("[INFO] Evaluation mode!!")
+            print("Evaluation mode!!")
             c.eval()
         else:
             if c.get("use_ray", True):
@@ -491,5 +509,5 @@ class Main(Config):
                 c.setdefaults(n_workers=1, n_rollouts_per_worker=c.n_rollouts_per_step)
 
             assert c.n_workers * c.n_rollouts_per_worker == c.n_rollouts_per_step
-            print("[INFO] Training mode!!")
+            print("Training mode!!")
             c.train()

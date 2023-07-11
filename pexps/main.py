@@ -32,7 +32,7 @@ if __name__ == "__main__":
     stats = SimulationStats()
     # set the number of workers here
     n_workers = 12
-    print(c.test_run)
+
     c.setdefaults(
         sim_step=0.5,
         adv_norm=False,
@@ -42,9 +42,11 @@ if __name__ == "__main__":
         use_ray=True,
         num_workers=n_workers,
         per_step_rollouts=n_workers,
+
         max_accel=5.0,
         max_decel=-5.0,
-        alg=TRPO,
+
+        alg=PPO,
         n_gds=10,
         n_minibatches=40,
         lr=1e-3,
@@ -54,12 +56,14 @@ if __name__ == "__main__":
         norm_reward=False,
         center_reward=False,
         use_critich=True,
+
         _n_obs=11,
         n_steps=3000,
         horizon=600,
         warmup_steps=50,
         act_type="accel",
         sumo_dir="sumo",
+
         # the model ID number used for testing
         e=0,
         wandb=False,
@@ -68,6 +72,7 @@ if __name__ == "__main__":
         wandb_key="9dbd690c152c02907b37359c88b9dbf4c9c6be0b",
         target_vel=15.0,
         stats=stats,
+
         # every 'rl_fraction' vehicle is an RL vehicle. This means,
         # rl_fraction=1 => 100% RL vehicle penetration
         # rl_fraction=2 => 50% RL vehicle penetration
